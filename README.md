@@ -136,6 +136,10 @@ npm run build
 
 The only runtime dependency is [`yaml`](https://github.com/eemeli/yaml). GitHub API calls use `fetch`.
 
+## Support
+
+heano maintains this for its own use and shares it as is. Issues and pull requests are welcome, but they may not get a quick reply.
+
 ## Licence
 
 [MIT](LICENSE)
