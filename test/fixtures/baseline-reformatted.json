@@ -1,0 +1,29 @@
+{
+  "components": {"schemas": {"Form": {"properties": {
+    "legacy_flag": {"type": "boolean"},
+    "name": {"type": "string"},
+    "id": {"type": "integer"},
+    "description": {"description": "Shown to editors.", "type": "string"}
+  }, "required": ["name", "id"], "type": "object"}}},
+  "paths": {
+    "/forms/{id}": {
+      "delete": {"responses": {"204": {"description": "Deleted"}}, "summary": "Delete a form",
+        "parameters": [{"schema": {"type": "integer"}, "required": true, "in": "path", "name": "id"}]},
+      "get": {"summary": "Get a form",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {
+          "404": {"description": "Not found"},
+          "200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Form"}}}}
+        }}
+    },
+    "/forms": {"get": {"summary": "List forms",
+      "parameters": [
+        {"name": "per_page", "in": "query", "schema": {"type": "integer"}},
+        {"name": "page", "in": "query", "schema": {"type": "integer"}}
+      ],
+      "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {
+        "type": "object", "properties": {"forms": {"type": "array", "items": {"$ref": "#/components/schemas/Form"}}}}}}}}}}
+  },
+  "info": {"version": "1.0", "title": "Example API"},
+  "openapi": "3.0.1"
+}

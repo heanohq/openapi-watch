@@ -1,0 +1,24 @@
+# Copy to .github/workflows/basin-api-watch.yml in the repository that holds the baseline.
+name: Watch Basin API
+
+on:
+  schedule:
+    - cron: '17 6 * * 1' # Mondays, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # only needed for create-pr
+  issues: write
+  pull-requests: write # only needed for create-pr
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: heanoio/openapi-watch@v1
+        with:
+          spec-url: https://usebasin.com/api_docs/v1/swagger.yaml
+          baseline-path: spec/basin-openapi.yaml
+          create-pr: true

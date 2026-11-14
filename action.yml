@@ -1,0 +1,63 @@
+name: OpenAPI Watch
+description: Watch a third-party OpenAPI spec and open an issue (and optionally a PR) when it drifts from your committed copy.
+author: heano
+branding:
+  icon: eye
+  color: blue
+
+inputs:
+  spec-url:
+    description: URL of the upstream OpenAPI spec (YAML or JSON). A path in the workspace also works.
+    required: true
+  baseline-path:
+    description: Path, in the calling repository, of the committed copy of the spec to compare against.
+    required: true
+  github-token:
+    description: Token used to open issues and pull requests.
+    default: ${{ github.token }}
+  ignore:
+    description: Comma-separated OpenAPI keywords to drop before comparing, e.g. "description,summary,example". Schema properties with these names are kept.
+    default: ''
+  issue:
+    description: Open or update an issue when the spec has changed.
+    default: 'true'
+  issue-title:
+    description: Title of the issue. Defaults to "OpenAPI spec changed - <info.title>".
+    default: ''
+  issue-labels:
+    description: Comma-separated labels for the issue.
+    default: openapi-watch
+  close-issue-when-unchanged:
+    description: Close the open issue once the upstream spec matches the baseline again.
+    default: 'true'
+  create-pr:
+    description: Also open (or update) a pull request that replaces the baseline with the upstream spec.
+    default: 'false'
+  pr-branch:
+    description: Branch for the pull request. Defaults to "openapi-watch/<baseline-path>".
+    default: ''
+  base-branch:
+    description: Branch the pull request targets. Defaults to the repository's default branch.
+    default: ''
+  dry-run:
+    description: Only report (log, outputs, job summary); don't touch issues or pull requests.
+    default: 'false'
+  fail-on-change:
+    description: Fail the step when the spec has changed, after reporting.
+    default: 'false'
+
+outputs:
+  changed:
+    description: '"true" if the upstream spec differs from the baseline, otherwise "false".'
+  summary:
+    description: Markdown summary of the changes (empty when unchanged).
+  diff-file:
+    description: Path to a file holding the unified diff of the normalised documents.
+  issue-url:
+    description: URL of the issue that was opened or updated.
+  pr-url:
+    description: URL of the pull request that was opened or updated.
+
+runs:
+  using: node24
+  main: dist/index.cjs

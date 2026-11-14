@@ -1,0 +1,73 @@
+openapi: 3.0.1
+info:
+  title: Example API
+  version: '1.0'
+paths:
+  /forms:
+    get:
+      summary: List forms
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Form'
+  /forms/{id}:
+    get:
+      summary: Get a form
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Form'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete a form
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+components:
+  schemas:
+    Form:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          description: Shown to editors.
+        legacy_flag:
+          type: boolean

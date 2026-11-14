@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Check dist/ is up to date
+        run: |
+          npm run build
+          git diff --exit-code -- dist/ || { echo "::error::dist/ is out of date. Run npm run build and commit the result."; exit 1; }
+
+  # Runs the action itself, as a calling workflow would, against the fixtures.
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Changed spec
+        id: changed
+        uses: ./
+        with:
+          spec-url: test/fixtures/upstream.yaml
+          baseline-path: test/fixtures/baseline.yaml
+          dry-run: true
+
+      - name: Same spec, different formatting
+        id: same
+        uses: ./
+        with:
+          spec-url: test/fixtures/baseline-reformatted.json
+          baseline-path: test/fixtures/baseline.yaml
+          dry-run: true
+
+      - name: Check outputs
+        env:
+          CHANGED: ${{ steps.changed.outputs.changed }}
+          SAME: ${{ steps.same.outputs.changed }}
+          SUMMARY: ${{ steps.changed.outputs.summary }}
+          DIFF_FILE: ${{ steps.changed.outputs.diff-file }}
+        run: |
+          test "$CHANGED" = true
+          test "$SAME" = false
+          grep -q 'POST /forms' <<< "$SUMMARY"
+          grep -q '^+    post:' "$DIFF_FILE"
