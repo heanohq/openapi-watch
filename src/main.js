@@ -208,7 +208,7 @@ export async function run({ env = process.env, log = console.log, clientFactory 
 
     if (inputs.openIssue) {
       const body = buildBody({ summaryMd, diff, specUrl: inputs.specUrl, baselinePath: inputs.baselinePath, runUrl, prUrl, prError, marker, hashMarker });
-      const { action, issue } = await upsertIssue(client, { marker, hashMarker, title, body, labels: inputs.issueLabels });
+      const { action, issue } = await upsertIssue(client, { marker, hashMarker, title, body, labels: inputs.issueLabels, mustMention: prUrl });
       result.issue = issue;
       setOutput('issue-url', issue.html_url, env);
       log(`Issue ${action}: ${issue.html_url}`);

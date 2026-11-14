@@ -7725,13 +7725,17 @@ async function searchIssues(client, marker, label) {
   }
   return null;
 }
-async function upsertIssue(client, { marker, hashMarker, title, body, labels }) {
+async function upsertIssue(client, { marker, hashMarker, title, body, labels, mustMention = "" }) {
   const existing = await findIssue(client, { marker, label: labels[0] });
   if (!existing) {
     const created = await client.request("POST", "/issues", { title, body, labels });
     return { action: "created", issue: created };
   }
   if ((existing.body ?? "").includes(hashMarker)) {
+    if (mustMention && !(existing.body ?? "").includes(mustMention)) {
+      const refreshed = await client.request("PATCH", `/issues/${existing.number}`, { body });
+      return { action: "refreshed", issue: refreshed };
+    }
     return { action: "unchanged", issue: existing };
   }
   const updated = await client.request("PATCH", `/issues/${existing.number}`, { title, body });
@@ -7974,7 +7978,7 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
     }
     if (inputs.openIssue) {
       const body = buildBody({ summaryMd, diff, specUrl: inputs.specUrl, baselinePath: inputs.baselinePath, runUrl, prUrl, prError, marker, hashMarker });
-      const { action, issue } = await upsertIssue(client, { marker, hashMarker, title, body, labels: inputs.issueLabels });
+      const { action, issue } = await upsertIssue(client, { marker, hashMarker, title, body, labels: inputs.issueLabels, mustMention: prUrl });
       result.issue = issue;
       setOutput("issue-url", issue.html_url, env);
       log(`Issue ${action}: ${issue.html_url}`);

@@ -237,3 +237,24 @@ test('each run writes its diff to its own file', async () => {
   assert.notEqual(outputs(shared.output)['diff-file'], first);
   assert.match(readFileSync(first, 'utf8'), /^\+    post:/m);
 });
+
+test('adds the PR link to an existing issue once the PR can be opened, without a comment', async () => {
+  const gh = fakeGitHub();
+  let blocked = true;
+  const flaky = (opts) => {
+    const client = gh.clientFactory(opts);
+    const request = client.request;
+    client.request = (method, path, body) =>
+      blocked && method === 'POST' && path === '/pulls' ? Promise.reject(new Error('not permitted')) : request(method, path, body);
+    return client;
+  };
+  const inputs = { 'INPUT_CREATE-PR': 'true', 'INPUT_BASE-BRANCH': 'main' };
+  await assert.rejects(run({ env: env(inputs).env, log: quiet, clientFactory: flaky }));
+  blocked = false;
+  await run({ env: env(inputs).env, log: quiet, clientFactory: flaky });
+
+  assert.equal(gh.state.issues.length, 1);
+  assert.match(gh.state.issues[0].body, /Baseline update: https:\/\/github.com\/acme\/app\/pull\/100/);
+  assert.doesNotMatch(gh.state.issues[0].body, /could not be opened/);
+  assert.equal(gh.state.comments.length, 0);
+});

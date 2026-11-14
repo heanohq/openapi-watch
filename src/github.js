@@ -54,13 +54,19 @@ async function searchIssues(client, marker, label) {
  * Open a new issue, or update the existing one. If the existing issue already
  * describes this exact upstream version, nothing is changed.
  */
-export async function upsertIssue(client, { marker, hashMarker, title, body, labels }) {
+export async function upsertIssue(client, { marker, hashMarker, title, body, labels, mustMention = '' }) {
   const existing = await findIssue(client, { marker, label: labels[0] });
   if (!existing) {
     const created = await client.request('POST', '/issues', { title, body, labels });
     return { action: 'created', issue: created };
   }
   if ((existing.body ?? '').includes(hashMarker)) {
+    // Same upstream version. Refresh the description quietly only if it is missing
+    // something new, such as the link to a pull request opened since.
+    if (mustMention && !(existing.body ?? '').includes(mustMention)) {
+      const refreshed = await client.request('PATCH', `/issues/${existing.number}`, { body });
+      return { action: 'refreshed', issue: refreshed };
+    }
     return { action: 'unchanged', issue: existing };
   }
   const updated = await client.request('PATCH', `/issues/${existing.number}`, { title, body });
