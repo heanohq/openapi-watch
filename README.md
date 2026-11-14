@@ -66,8 +66,8 @@ The action finds its own issue through a hidden marker in the description, so yo
 | `issue` | `true` | Open or update an issue when the spec has changed. |
 | `issue-title` | `OpenAPI spec changed: <info.title>` | Title for the issue. |
 | `issue-labels` | `openapi-watch` | Comma-separated labels for the issue. |
-| `close-issue-when-unchanged` | `true` | Close the issue once the upstream spec matches the baseline again, for example after the pull request is merged. |
-| `create-pr` | `false` | Also open a pull request that replaces the baseline with the upstream spec, exactly as downloaded. |
+| `close-issue-when-unchanged` | `true` | Close the issue on the next run once the upstream spec matches the baseline again, for example after you update the baseline yourself. |
+| `create-pr` | `false` | Also open a pull request that replaces the baseline with the upstream spec, exactly as downloaded. The pull request says `Closes #<issue>`, so merging it closes the issue too. |
 | `pr-branch` | `openapi-watch/<baseline-path>` | Branch for the pull request. It is reset to the base branch on every run. |
 | `base-branch` | the default branch | Branch the pull request targets. |
 | `dry-run` | `false` | Only report (log, outputs, run summary). Don't touch issues or pull requests. |

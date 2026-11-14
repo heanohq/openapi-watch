@@ -176,6 +176,8 @@ test('create-pr commits the upstream file to a branch and links the PR from the 
   );
   assert.equal(gh.state.pulls.length, 1, 'the second run updates the PR instead of opening another');
   assert.equal(gh.state.pulls[0].base, 'main');
+  assert.match(gh.state.pulls[0].body, /\n\nCloses #1\n$/, 'merging the PR closes the issue');
+  assert.equal(gh.state.pulls[0].body.match(/Closes #/g).length, 1);
   assert.match(gh.state.issues[0].body, /Baseline update: https:\/\/github.com\/acme\/app\/pull\/100/);
   assert.equal(outputs(e.output)['pr-url'], 'https://github.com/acme/app/pull/100');
 });

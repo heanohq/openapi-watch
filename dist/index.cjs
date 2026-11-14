@@ -7955,6 +7955,7 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
     const hashMarker = `<!-- openapi-watch-hash:${hash} -->`;
     const title = inputs.issueTitle || `OpenAPI spec changed: ${upstream.info?.title ?? inputs.specUrl}`;
     let prUrl = "";
+    const prBody = truncate([`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, "", summaryMd].join("\n"), BODY_LIMIT);
     if (inputs.createPr) {
       try {
         const slug = inputs.baselinePath.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -7965,7 +7966,7 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
           content: upstreamText,
           title: `Update ${inputs.baselinePath} from upstream`,
           commitMessage: `Update ${inputs.baselinePath} from upstream`,
-          body: [`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, "", summaryMd].join("\n")
+          body: prBody
         });
         prUrl = pr.html_url;
         result.pr = pr;
@@ -7982,6 +7983,14 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
       result.issue = issue;
       setOutput("issue-url", issue.html_url, env);
       log(`Issue ${action}: ${issue.html_url}`);
+      if (result.pr && !(result.pr.body ?? "").includes(`Closes #${issue.number}`)) {
+        result.pr = await client.request("PATCH", `/pulls/${result.pr.number}`, {
+          body: `${prBody}
+
+Closes #${issue.number}
+`
+        });
+      }
     }
   }
   if (prError && !inputs.failOnChange) {

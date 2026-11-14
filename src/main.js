@@ -183,6 +183,7 @@ export async function run({ env = process.env, log = console.log, clientFactory 
     const title = inputs.issueTitle || `OpenAPI spec changed: ${upstream.info?.title ?? inputs.specUrl}`;
 
     let prUrl = '';
+    const prBody = truncate([`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, '', summaryMd].join('\n'), BODY_LIMIT);
     if (inputs.createPr) {
       try {
         const slug = inputs.baselinePath.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
@@ -193,7 +194,7 @@ export async function run({ env = process.env, log = console.log, clientFactory 
           content: upstreamText,
           title: `Update ${inputs.baselinePath} from upstream`,
           commitMessage: `Update ${inputs.baselinePath} from upstream`,
-          body: [`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, '', summaryMd].join('\n'),
+          body: prBody,
         });
         prUrl = pr.html_url;
         result.pr = pr;
@@ -212,6 +213,13 @@ export async function run({ env = process.env, log = console.log, clientFactory 
       result.issue = issue;
       setOutput('issue-url', issue.html_url, env);
       log(`Issue ${action}: ${issue.html_url}`);
+
+      // "Closes #N" makes GitHub close the issue as soon as the PR is merged.
+      if (result.pr && !(result.pr.body ?? '').includes(`Closes #${issue.number}`)) {
+        result.pr = await client.request('PATCH', `/pulls/${result.pr.number}`, {
+          body: `${prBody}\n\nCloses #${issue.number}\n`,
+        });
+      }
     }
   }
 
