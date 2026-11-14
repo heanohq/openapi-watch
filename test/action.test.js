@@ -208,3 +208,32 @@ test('finds its issue even when the label was removed', async () => {
 test('required inputs', async () => {
   await assert.rejects(run({ env: { 'INPUT_BASELINE-PATH': 'x' }, log: quiet }), /"spec-url" is required/);
 });
+
+test('a failed pull request still opens the issue, then fails the step', async () => {
+  const gh = fakeGitHub();
+  const failing = (opts) => {
+    const client = gh.clientFactory(opts);
+    const request = client.request;
+    client.request = (method, path, body) =>
+      method === 'POST' && path === '/pulls'
+        ? Promise.reject(new Error('GitHub Actions is not permitted to create or approve pull requests.'))
+        : request(method, path, body);
+    return client;
+  };
+  await assert.rejects(
+    run({ env: env({ 'INPUT_CREATE-PR': 'true', 'INPUT_BASE-BRANCH': 'main' }).env, log: quiet, clientFactory: failing }),
+    /issue was opened, but the pull request failed: GitHub Actions is not permitted/,
+  );
+  assert.equal(gh.state.issues.length, 1);
+  assert.match(gh.state.issues[0].body, /could not be opened/);
+});
+
+test('each run writes its diff to its own file', async () => {
+  const shared = env({ 'INPUT_DRY-RUN': 'true' });
+  await run({ env: shared.env, log: quiet });
+  const first = outputs(shared.output)['diff-file'];
+  writeFileSync(shared.output, '');
+  await run({ env: { ...shared.env, 'INPUT_SPEC-URL': 'test/fixtures/baseline.yaml' }, log: quiet });
+  assert.notEqual(outputs(shared.output)['diff-file'], first);
+  assert.match(readFileSync(first, 'utf8'), /^\+    post:/m);
+});

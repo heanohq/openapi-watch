@@ -7848,10 +7848,11 @@ function truncate(text, limit) {
 \u2026 (truncated)
 `;
 }
-function buildBody({ summaryMd, diff, specUrl, baselinePath, runUrl, prUrl, marker, hashMarker }) {
+function buildBody({ summaryMd, diff, specUrl, baselinePath, runUrl, prUrl, prError, marker, hashMarker }) {
   const links = [`- Upstream spec: ${specUrl}`, `- Baseline: \`${baselinePath}\``];
   if (runUrl) links.push(`- Full raw diff: [workflow run summary](${runUrl})`);
   if (prUrl) links.push(`- Baseline update: ${prUrl}`);
+  if (prError) links.push(`- The pull request to update the baseline could not be opened. See the workflow run for details.`);
   const head = [
     marker,
     hashMarker,
@@ -7894,7 +7895,7 @@ async function run({ env = process.env, log = console.log, clientFactory = creat
   const afterYaml = toCanonicalYaml(after);
   const changed = beforeYaml !== afterYaml;
   const tmp = env.RUNNER_TEMP || (0, import_node_os.tmpdir)();
-  const diffFile = (0, import_node_path.join)(tmp, "openapi-watch.diff");
+  const diffFile = (0, import_node_path.join)((0, import_node_fs.mkdtempSync)((0, import_node_path.join)(tmp, "openapi-watch-")), "openapi-watch.diff");
   const diff = changed ? unifiedDiff(beforeYaml, afterYaml) : "";
   (0, import_node_fs.writeFileSync)(diffFile, diff);
   const summary = summarize(before, after);
@@ -7940,6 +7941,7 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
     env
   );
   const result = { changed, summary, diff };
+  let prError = "";
   if (inputs.dryRun) {
     log("Dry run: not opening an issue or pull request.");
   } else {
@@ -7950,28 +7952,38 @@ No changes: ${inputs.specUrl} matches \`${inputs.baselinePath}\`.
     const title = inputs.issueTitle || `OpenAPI spec changed: ${upstream.info?.title ?? inputs.specUrl}`;
     let prUrl = "";
     if (inputs.createPr) {
-      const slug = inputs.baselinePath.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
-      const { action, pr } = await upsertPullRequest(client, {
-        branch: inputs.prBranch || `openapi-watch/${slug}`,
-        baseBranch: inputs.baseBranch,
-        path: inputs.baselinePath,
-        content: upstreamText,
-        title: `Update ${inputs.baselinePath} from upstream`,
-        commitMessage: `Update ${inputs.baselinePath} from upstream`,
-        body: [`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, "", summaryMd].join("\n")
-      });
-      prUrl = pr.html_url;
-      result.pr = pr;
-      setOutput("pr-url", prUrl, env);
-      log(`Pull request ${action}: ${prUrl}`);
+      try {
+        const slug = inputs.baselinePath.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+        const { action, pr } = await upsertPullRequest(client, {
+          branch: inputs.prBranch || `openapi-watch/${slug}`,
+          baseBranch: inputs.baseBranch,
+          path: inputs.baselinePath,
+          content: upstreamText,
+          title: `Update ${inputs.baselinePath} from upstream`,
+          commitMessage: `Update ${inputs.baselinePath} from upstream`,
+          body: [`Updates \`${inputs.baselinePath}\` to the current version of ${inputs.specUrl}.`, "", summaryMd].join("\n")
+        });
+        prUrl = pr.html_url;
+        result.pr = pr;
+        setOutput("pr-url", prUrl, env);
+        log(`Pull request ${action}: ${prUrl}`);
+      } catch (err) {
+        prError = err.message;
+        log(`::warning::Could not open the pull request: ${prError}`);
+      }
     }
     if (inputs.openIssue) {
-      const body = buildBody({ summaryMd, diff, specUrl: inputs.specUrl, baselinePath: inputs.baselinePath, runUrl, prUrl, marker, hashMarker });
+      const body = buildBody({ summaryMd, diff, specUrl: inputs.specUrl, baselinePath: inputs.baselinePath, runUrl, prUrl, prError, marker, hashMarker });
       const { action, issue } = await upsertIssue(client, { marker, hashMarker, title, body, labels: inputs.issueLabels });
       result.issue = issue;
       setOutput("issue-url", issue.html_url, env);
       log(`Issue ${action}: ${issue.html_url}`);
     }
+  }
+  if (prError && !inputs.failOnChange) {
+    const err = new Error(`The issue was opened, but the pull request failed: ${prError}`);
+    err.result = result;
+    throw err;
   }
   if (inputs.failOnChange) {
     const err = new Error("The upstream OpenAPI spec differs from the baseline.");
