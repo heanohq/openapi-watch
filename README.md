@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: heanoio/openapi-watch@v1
+      - uses: heanohq/openapi-watch@v1
         with:
           spec-url: https://usebasin.com/api_docs/v1/swagger.yaml
           baseline-path: spec/basin-openapi.yaml
